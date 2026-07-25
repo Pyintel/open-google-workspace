@@ -1,0 +1,47 @@
+name: 🚀 Test, Build & Publish Arc Module to NPM (@pyintel)
+
+on:
+  push:
+    branches:
+      - master
+    tags:
+      - 'v*'
+
+jobs:
+  test-build-publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: 📦 Install Dependencies
+        run: bun install
+
+      - name: 🧪 Run Enterprise Test Suite
+        run: npm test
+
+      - name: ⚡ Build Minified Standalone Bundle
+        run: |
+          mkdir -p dist
+          bun build ./tools/gws.js ./tools/auth.js --target=node --outdir=dist --minify
+
+      - name: 🚀 Publish to NPM Registry (@pyintel scope)
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

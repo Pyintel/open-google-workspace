@@ -1,9 +1,25 @@
 {
-  "name": "open-google-workspace",
+  "name": "@pyintel/arc-module-google-workspace",
   "version": "1.0.0",
-  "description": "Google Workspace Automation & Multi-User OAuth Module for Apex Arc",
+  "description": "Enterprise Google Workspace Automation & Multi-User OAuth Module for Pyintel Arc",
   "author": "Pyintel",
+  "license": "MIT",
+  "main": "dist/gws.js",
+  "files": [
+    "dist",
+    "ARC",
+    "skills",
+    "README.md"
+  ],
+  "keywords": [
+    "pyintel-arc-module",
+    "arc-module",
+    "google-workspace",
+    "gmail",
+    "drive"
+  ],
   "scripts": {
+    "build": "bun build ./tools/gws.js ./tools/auth.js --target=node --outdir=dist --minify",
     "test": "node test/suite.test.js"
   },
   "dependencies": {
