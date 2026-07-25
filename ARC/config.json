@@ -1,0 +1,15 @@
+{
+  "id": "open-google-workspace",
+  "name": "Google Workspace Automation",
+  "description": "Tools and skills for Gmail, Google Drive, Calendar, Docs, and Sheets automation.",
+  "setup": {
+    "autoInstallDependencies": true,
+    "command": "bun install || npm install"
+  },
+  "prerequisites": [],
+  "vectorize": {
+    "includes": ["**/*.md"]
+  },
+  "tools": ["tools/*.js"],
+  "commands": ["skills/*/SKILL.md"]
+}
