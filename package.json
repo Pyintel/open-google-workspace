@@ -1,0 +1,6 @@
+{
+  "name": "open-google-workspace",
+  "version": "1.0.0",
+  "description": "Google Workspace Automation (Gmail, Calendar, Drive, Docs, Sheets) Module for Apex Arc",
+  "author": "Pyintel"
+}
