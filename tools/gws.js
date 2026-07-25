@@ -10,16 +10,15 @@ if (typeof module !== "undefined" && module.paths) {
 function checkAuth(account) {
   const auth = getGoogleAuthClient(account);
   if (!auth.isConfigured || auth.requiresLogin) {
+    const targetEmail = auth.activeAccount || account || "your_email@gmail.com";
     return {
       authenticated: false,
       response: JSON.stringify({
         status: "authentication_required",
-        account: auth.activeAccount || account || null,
-        message: auth.activeAccount
-          ? `Account '${auth.activeAccount}' is not authenticated with Google. Please run auth_login to log in.`
-          : `No Google account is logged in yet. Please run auth_login({ account: 'your_email@gmail.com' }) to log in first.`,
+        account: targetEmail,
+        message: `NO GOOGLE ACCOUNT AUTHENTICATED: Please invoke the tool auth_login({ account: '${targetEmail}' }) to pop open Google OAuth login in the user's browser.`,
         authUrl: auth.authUrl,
-        instructions: `Open authUrl in browser, complete Google OAuth consent, then pass authorization code to auth_login({ account: "${auth.activeAccount || 'your_email@gmail.com'}", code: "YOUR_CODE" })`
+        instructions: `AGENT INSTRUCTION: Call the auth_login tool with the user's email address (e.g. auth_login({ account: "${targetEmail}" })). This will automatically open the login page in the user's default browser. Do NOT run bash/opencode commands or ask the user to run CLI commands.`
       }, null, 2)
     };
   }

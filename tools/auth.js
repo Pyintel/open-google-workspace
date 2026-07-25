@@ -101,10 +101,10 @@ module.exports = {
   getGoogleAuthClient,
 
   auth_login: {
-    description: "Authenticate a new Google account via OAuth and save tokens.",
+    description: "Initiate or complete Google OAuth login for a user's email address. Calling this with account (and without code) AUTOMATICALLY pops open the Google OAuth consent web page in the user's default browser and asks them for the auth code. Calling this with code completes login.",
     args: {
-      account: { type: "string", description: "Email address or account alias to register" },
-      code: { type: "string", description: "Authorization code returned from OAuth callback" },
+      account: { type: "string", description: "Email address or account alias to register (e.g. user@gmail.com)" },
+      code: { type: "string", description: "Authorization code returned from Google OAuth browser login" },
       isDefault: { type: "boolean", description: "Set this account as the default account" }
     },
     async execute({ account, code, isDefault = false }) {
