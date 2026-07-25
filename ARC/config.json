@@ -1,7 +1,7 @@
 {
   "id": "open-google-workspace",
-  "name": "Google Workspace Automation",
-  "description": "Tools and skills for Gmail, Google Drive, Calendar, Docs, and Sheets automation.",
+  "name": "Google Workspace Automation & Multi-User OAuth",
+  "description": "27 enterprise tools for Gmail, Google Drive, Calendar, Docs, Sheets, Tasks, Contacts, Chat, Keep, Forms, Slides, Meet, Apps Script, and Multi-User OAuth authentication.",
   "setup": {
     "autoInstallDependencies": true,
     "command": "bun install || npm install"
@@ -10,6 +10,6 @@
   "vectorize": {
     "includes": ["**/*.md"]
   },
-  "tools": ["tools/*.js"],
+  "tools": ["tools/gws.js", "tools/auth.js"],
   "commands": ["skills/*/SKILL.md"]
 }
