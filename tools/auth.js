@@ -1,5 +1,6 @@
 const fs = require("fs");
 const path = require("path");
+const { exec } = require("child_process");
 const { google } = require("googleapis");
 
 const CONFIG_DIR = path.join(
@@ -28,6 +29,17 @@ function loadTokenStore() {
 function saveTokenStore(store) {
   ensureTokenStore();
   fs.writeFileSync(TOKEN_PATH, JSON.stringify(store, null, 2));
+}
+
+function openBrowser(url) {
+  try {
+    const startCmd = process.platform === "win32"
+      ? `start "" "${url}"`
+      : process.platform === "darwin"
+      ? `open "${url}"`
+      : `xdg-open "${url}"`;
+    exec(startCmd);
+  } catch {}
 }
 
 function resolveAccount(requestedAccount) {
@@ -138,11 +150,14 @@ module.exports = {
       if (isDefault || !store.defaultAccount) store.defaultAccount = account;
       saveTokenStore(store);
 
+      openBrowser(authUrl);
+
       return JSON.stringify({
         status: "pending_authorization",
         account,
         authUrl,
-        instructions: `Open the authUrl in your browser to complete Google OAuth consent, then pass the returned code back to auth_login({ account: "${account}", code: "YOUR_CODE" })`
+        browserOpened: true,
+        instructions: `Opened Google OAuth Login in your default browser! Once authorized, copy the code from your browser and pass it back to auth_login({ account: "${account}", code: "YOUR_CODE" })`
       }, null, 2);
     }
   },
