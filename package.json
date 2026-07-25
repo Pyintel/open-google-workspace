@@ -1,6 +1,6 @@
 {
   "name": "@pyintel/arc-module-google-workspace",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Enterprise Google Workspace Automation & Multi-User OAuth Module for Pyintel Arc",
   "author": "Pyintel",
   "license": "MIT",
@@ -8,9 +8,6 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Pyintel/open-google-workspace.git"
-  },
-  "publishConfig": {
-    "registry": "https://npm.pkg.github.com"
   },
   "files": [
     "dist",
