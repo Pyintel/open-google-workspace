@@ -57,7 +57,7 @@ function saveTokenStore(store) {
 function loadCredentials() {
   let clientId = process.env.GOOGLE_CLIENT_ID;
   let clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-  let redirectUri = process.env.GOOGLE_REDIRECT_URI || "https://auth.pyintel.cc/oauth/callback";
+  let redirectUri = process.env.GOOGLE_REDIRECT_URI;
 
   const localCredsPath = path.join(__dirname, "..", "credentials.json");
   const targetCredsPath = fs.existsSync(localCredsPath) ? localCredsPath : CREDENTIALS_PATH;
@@ -68,11 +68,13 @@ function loadCredentials() {
       const installed = creds.installed || creds.web || creds;
       clientId = clientId || installed.client_id;
       clientSecret = clientSecret || installed.client_secret;
-      if (installed.redirect_uris && installed.redirect_uris[0]) {
+      if (!redirectUri && installed.redirect_uris && installed.redirect_uris.length > 0) {
         redirectUri = installed.redirect_uris[0];
       }
     } catch {}
   }
+
+  redirectUri = redirectUri || "http://localhost";
 
   return { clientId, clientSecret, redirectUri };
 }
@@ -114,12 +116,13 @@ function resolveAccount(requestedAccount) {
   return requestedAccount || null;
 }
 
-function getGoogleAuthClient(requestedAccount) {
+function getGoogleAuthClient(requestedAccount, customRedirectUri) {
   const activeAccount = resolveAccount(requestedAccount);
   const store = loadTokenStore();
   const accInfo = activeAccount ? store.accounts[activeAccount] : null;
 
-  const { clientId, clientSecret, redirectUri } = loadCredentials();
+  const { clientId, clientSecret, redirectUri: defaultRedirect } = loadCredentials();
+  const redirectUri = customRedirectUri || defaultRedirect;
 
   const isCredentialsMissing = !clientId || !clientSecret;
 
@@ -167,13 +170,14 @@ module.exports = {
   loadCredentials,
 
   auth_login: {
-    description: "Initiate or complete Google OAuth login for a user's email address. Directs users to https://auth.pyintel.cc/oauth/callback for high-fashion glossy code display.",
+    description: "Initiate or complete Google OAuth login for a user's email address. Automatically uses authorized redirect URI matching credentials.json.",
     args: {
       account: { type: "string", description: "Email address or account alias to register (e.g. user@gmail.com)" },
       code: { type: "string", description: "Authorization code OR full redirect URL returned from Google OAuth browser login" },
+      redirectUri: { type: "string", description: "Optional custom redirect URI override (e.g. https://auth.pyintel.cc/oauth/callback or http://localhost)" },
       isDefault: { type: "boolean", description: "Set this account as the default account" }
     },
-    async execute({ account, code, isDefault = false }) {
+    async execute({ account, code, redirectUri, isDefault = false }) {
       if (!account) {
         return JSON.stringify({
           status: "error",
@@ -181,7 +185,7 @@ module.exports = {
         }, null, 2);
       }
 
-      const { oauth2Client, authUrl, isCredentialsMissing } = getGoogleAuthClient(account);
+      const { oauth2Client, authUrl, isCredentialsMissing, redirectUri: activeRedirect } = getGoogleAuthClient(account, redirectUri);
 
       if (isCredentialsMissing) {
         return JSON.stringify({
@@ -238,8 +242,9 @@ module.exports = {
         status: "pending_authorization",
         account,
         authUrl,
+        activeRedirect,
         browserOpened: true,
-        instructions: `Opened Google OAuth Login in your default browser! Authorized callbacks will redirect to https://auth.pyintel.cc/oauth/callback. Once authorized, copy the code/URL from your glossy landing page and pass it back to auth_login({ account: "${account}", code: "YOUR_URL_OR_CODE" })`
+        instructions: `Opened Google OAuth Login in your default browser (using redirect ${activeRedirect})! Once authorized, copy the code/URL from your browser and pass it back to auth_login({ account: "${account}", code: "YOUR_URL_OR_CODE" })`
       }, null, 2);
     }
   },
