@@ -1,0 +1,42 @@
+name: Continuous Integration & Verification
+
+on:
+  push:
+    branches: [ master, dev ]
+  pull_request:
+    branches: [ master, dev ]
+
+permissions:
+  contents: write
+
+jobs:
+  test:
+    name: 38-Tool Suite & Multi-User OAuth Verification
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        node-version: [20.x]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Install dependencies
+        run: npm install || true
+
+      - name: Run Enterprise 38-Tool Test Suite
+        run: npm test
+
+      - name: AutoAthera CI - Commit and Push Verified Test Outputs
+        if: runner.os == 'Linux' && github.event_name == 'push'
+        run: |
+          git config --global user.name "AutoAthera CI"
+          git config --global user.email "autoathera@pyintel.cc"
+          git status
+          git diff --quiet && git diff --staged --quiet || (git commit -am "ci(AutoAthera): Auto-commit 38-tool verified test outputs [skip ci]" && git push)
