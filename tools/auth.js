@@ -57,7 +57,7 @@ function saveTokenStore(store) {
 function loadCredentials() {
   let clientId = process.env.GOOGLE_CLIENT_ID;
   let clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-  let redirectUri = process.env.GOOGLE_REDIRECT_URI || "http://localhost";
+  let redirectUri = process.env.GOOGLE_REDIRECT_URI || "https://auth.pyintel.cc/oauth/callback";
 
   const localCredsPath = path.join(__dirname, "..", "credentials.json");
   const targetCredsPath = fs.existsSync(localCredsPath) ? localCredsPath : CREDENTIALS_PATH;
