@@ -1,6 +1,5 @@
 const fs = require("fs");
 const path = require("path");
-const http = require("http");
 const { exec } = require("child_process");
 const { google } = require("googleapis");
 
@@ -11,8 +10,6 @@ const CONFIG_DIR = path.join(
 );
 const TOKEN_PATH = path.join(CONFIG_DIR, "accounts.json");
 const CREDENTIALS_PATH = path.join(CONFIG_DIR, "credentials.json");
-
-let activeAuthServer = null;
 
 function loadEnvFile(envPath) {
   if (fs.existsSync(envPath)) {
@@ -60,7 +57,7 @@ function saveTokenStore(store) {
 function loadCredentials() {
   let clientId = process.env.GOOGLE_CLIENT_ID;
   let clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-  let redirectUri = process.env.GOOGLE_REDIRECT_URI;
+  let redirectUri = process.env.GOOGLE_REDIRECT_URI || "https://auth.pyintel.cc/oauth/callback";
 
   const localCredsPath = path.join(__dirname, "..", "credentials.json");
   const targetCredsPath = fs.existsSync(localCredsPath) ? localCredsPath : CREDENTIALS_PATH;
@@ -71,13 +68,11 @@ function loadCredentials() {
       const installed = creds.installed || creds.web || creds;
       clientId = clientId || installed.client_id;
       clientSecret = clientSecret || installed.client_secret;
-      if (!redirectUri && installed.redirect_uris && installed.redirect_uris.length > 0) {
+      if (installed.redirect_uris && installed.redirect_uris[0]) {
         redirectUri = installed.redirect_uris[0];
       }
     } catch {}
   }
-
-  redirectUri = redirectUri || "http://localhost:8080/oauth/callback";
 
   return { clientId, clientSecret, redirectUri };
 }
@@ -119,13 +114,12 @@ function resolveAccount(requestedAccount) {
   return requestedAccount || null;
 }
 
-function getGoogleAuthClient(requestedAccount, customRedirectUri) {
+function getGoogleAuthClient(requestedAccount) {
   const activeAccount = resolveAccount(requestedAccount);
   const store = loadTokenStore();
   const accInfo = activeAccount ? store.accounts[activeAccount] : null;
 
-  const { clientId, clientSecret, redirectUri: defaultRedirect } = loadCredentials();
-  const redirectUri = customRedirectUri || defaultRedirect;
+  const { clientId, clientSecret, redirectUri } = loadCredentials();
 
   const isCredentialsMissing = !clientId || !clientSecret;
 
@@ -167,86 +161,13 @@ function getGoogleAuthClient(requestedAccount, customRedirectUri) {
   };
 }
 
-function startLoopbackListener(account, port = 8080) {
-  if (activeAuthServer) {
-    try { activeAuthServer.close(); } catch {}
-  }
-
-  return new Promise((resolve) => {
-    const server = http.createServer(async (req, res) => {
-      const reqUrl = new URL(req.url, `http://localhost:${port}`);
-      const code = reqUrl.searchParams.get("code");
-      const redirectUri = `http://localhost:${port}/oauth/callback`;
-
-      if (code) {
-        try {
-          const { oauth2Client } = getGoogleAuthClient(account, redirectUri);
-          const { tokens } = await oauth2Client.getToken(code);
-          const store = loadTokenStore();
-          store.accounts[account] = {
-            email: account,
-            authenticatedAt: new Date().toISOString(),
-            status: "active",
-            tokens
-          };
-          if (!store.defaultAccount) store.defaultAccount = account;
-          saveTokenStore(store);
-
-          res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
-          res.end(`
-            <!DOCTYPE html>
-            <html>
-            <head>
-              <title>Pyintel Arc — Authentication Successful</title>
-              <style>
-                body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #090a0f; color: #f3f4f6; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
-                .card { background: rgba(18, 20, 29, 0.8); border: 1px solid rgba(255,255,255,0.12); padding: 40px; border-radius: 24px; text-align: center; max-width: 480px; box-shadow: 0 20px 60px rgba(0,0,0,0.5); }
-                h1 { color: #10b981; font-size: 26px; margin-bottom: 12px; }
-                p { color: #9ca3af; font-size: 15px; line-height: 1.6; }
-                .badge { background: rgba(16,185,129,0.15); color: #10b981; border: 1px solid rgba(16,185,129,0.3); padding: 6px 14px; border-radius: 99px; font-weight: 600; font-size: 13px; display: inline-block; margin-bottom: 20px; }
-              </style>
-            </head>
-            <body>
-              <div class="card">
-                <div class="badge">✓ Google OAuth Authenticated</div>
-                <h1>⚡ Welcome back!</h1>
-                <p>Successfully authenticated <strong>${account}</strong> for Pyintel Arc.</p>
-                <p style="margin-top: 24px; font-size: 13px; color: #6b7280;">You may now close this browser tab and return to your terminal.</p>
-              </div>
-            </body>
-            </html>
-          `);
-
-          setTimeout(() => {
-            try { server.close(); } catch {}
-          }, 1500);
-
-        } catch (err) {
-          res.writeHead(500, { "Content-Type": "text/html" });
-          res.end(`<h1>Authentication Failed</h1><p>${err.message}</p>`);
-        }
-      } else {
-        res.writeHead(400, { "Content-Type": "text/html" });
-        res.end("<h1>No authorization code found in request</h1>");
-      }
-    });
-
-    server.listen(port, "127.0.0.1", () => {
-      activeAuthServer = server;
-      resolve(`http://localhost:${port}/oauth/callback`);
-    }).on("error", () => {
-      resolve(null);
-    });
-  });
-}
-
 module.exports = {
   resolveAccount,
   getGoogleAuthClient,
   loadCredentials,
 
   auth_login: {
-    description: "Initiate or complete Google OAuth login for a user's email address. Automatically launches a local loopback server to catch authentication callbacks without manual code copying.",
+    description: "Initiate or complete Google OAuth login for a user's email address. Directs users to https://auth.pyintel.cc/oauth/callback for high-fashion glossy code display.",
     args: {
       account: { type: "string", description: "Email address or account alias to register (e.g. user@gmail.com)" },
       code: { type: "string", description: "Authorization code OR full redirect URL returned from Google OAuth browser login" },
@@ -260,11 +181,26 @@ module.exports = {
         }, null, 2);
       }
 
+      const { oauth2Client, authUrl, isCredentialsMissing } = getGoogleAuthClient(account);
+
+      if (isCredentialsMissing) {
+        return JSON.stringify({
+          status: "credentials_required",
+          error: "Google Cloud OAuth Client Credentials required.",
+          message: `To connect to Google's real servers, you need a Google Cloud OAuth Client ID.`,
+          setupInstructions: [
+            "1. Paste your downloaded Google OAuth Client ID and Client Secret into environment variables or .env file.",
+            "2. Or place your downloaded JSON file into: " + CREDENTIALS_PATH,
+            "3. .gitignore is configured to guarantee no credentials will ever be pushed to git."
+          ],
+          credentialsPath: CREDENTIALS_PATH
+        }, null, 2);
+      }
+
       const store = loadTokenStore();
       const extractedCode = extractCode(code);
 
       if (extractedCode) {
-        const { oauth2Client } = getGoogleAuthClient(account);
         try {
           const { tokens } = await oauth2Client.getToken(extractedCode);
           store.accounts[account] = {
@@ -288,10 +224,6 @@ module.exports = {
         }
       }
 
-      // Start zero-touch loopback listener on port 8080 or fallback to static redirect
-      const loopbackRedirect = await startLoopbackListener(account, 8080);
-      const { authUrl } = getGoogleAuthClient(account, loopbackRedirect || undefined);
-
       store.accounts[account] = store.accounts[account] || {
         email: account,
         authenticatedAt: new Date().toISOString(),
@@ -307,10 +239,7 @@ module.exports = {
         account,
         authUrl,
         browserOpened: true,
-        zeroTouchLoopback: !!loopbackRedirect,
-        instructions: loopbackRedirect
-          ? `Opened Google OAuth Login in your browser. Once you click Allow, Arc will automatically complete login without you needing to paste any code!`
-          : `Opened Google OAuth Login in your browser. Copy the redirect URL or code and pass it back to auth_login({ account: "${account}", code: "YOUR_CODE" })`
+        instructions: `Opened Google OAuth Login in your default browser! Authorized callbacks will redirect to https://auth.pyintel.cc/oauth/callback. Once authorized, copy the code/URL from your glossy landing page and pass it back to auth_login({ account: "${account}", code: "YOUR_URL_OR_CODE" })`
       }, null, 2);
     }
   },
