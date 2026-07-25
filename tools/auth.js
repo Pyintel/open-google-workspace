@@ -57,22 +57,24 @@ function saveTokenStore(store) {
 function loadCredentials() {
   let clientId = process.env.GOOGLE_CLIENT_ID;
   let clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-  let redirectUri = process.env.GOOGLE_REDIRECT_URI || "https://auth.pyintel.cc/oauth/callback";
+  let redirectUri = process.env.GOOGLE_REDIRECT_URI;
 
   const localCredsPath = path.join(__dirname, "..", "credentials.json");
   const targetCredsPath = fs.existsSync(localCredsPath) ? localCredsPath : CREDENTIALS_PATH;
 
-  if ((!clientId || !clientSecret) && fs.existsSync(targetCredsPath)) {
+  if (fs.existsSync(targetCredsPath)) {
     try {
       const creds = JSON.parse(fs.readFileSync(targetCredsPath, "utf8"));
       const installed = creds.installed || creds.web || creds;
       clientId = clientId || installed.client_id;
       clientSecret = clientSecret || installed.client_secret;
-      if (installed.redirect_uris && installed.redirect_uris[0]) {
+      if (!redirectUri && installed.redirect_uris && installed.redirect_uris.length > 0) {
         redirectUri = installed.redirect_uris[0];
       }
     } catch {}
   }
+
+  redirectUri = redirectUri || "http://localhost";
 
   return { clientId, clientSecret, redirectUri };
 }
