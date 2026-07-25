@@ -40,13 +40,13 @@ function resolveAccount(requestedAccount) {
   }
   const accounts = Object.keys(store.accounts);
   if (accounts.length > 0) return accounts[0];
-  return requestedAccount || "default@google.com";
+  return requestedAccount || null;
 }
 
 function getGoogleAuthClient(requestedAccount) {
   const activeAccount = resolveAccount(requestedAccount);
   const store = loadTokenStore();
-  const accInfo = store.accounts[activeAccount];
+  const accInfo = activeAccount ? store.accounts[activeAccount] : null;
 
   const clientId = process.env.GOOGLE_CLIENT_ID || "pyintel_arc_client_id";
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET || "pyintel_arc_client_secret";
@@ -58,7 +58,30 @@ function getGoogleAuthClient(requestedAccount) {
     oauth2Client.setCredentials(accInfo.tokens);
   }
 
-  return { oauth2Client, activeAccount, isConfigured: !!(accInfo && accInfo.tokens) };
+  const scopes = [
+    "https://www.googleapis.com/auth/gmail.modify",
+    "https://www.googleapis.com/auth/calendar",
+    "https://www.googleapis.com/auth/drive",
+    "https://www.googleapis.com/auth/documents",
+    "https://www.googleapis.com/auth/spreadsheets",
+    "https://www.googleapis.com/auth/tasks",
+    "https://www.googleapis.com/auth/contacts.readonly"
+  ];
+
+  const authUrl = oauth2Client.generateAuthUrl({
+    access_type: "offline",
+    scope: scopes,
+    prompt: "consent",
+    ...(activeAccount ? { login_hint: activeAccount } : {})
+  });
+
+  return {
+    oauth2Client,
+    activeAccount,
+    isConfigured: !!(accInfo && accInfo.tokens),
+    requiresLogin: !accInfo || !accInfo.tokens,
+    authUrl
+  };
 }
 
 module.exports = {
@@ -73,25 +96,15 @@ module.exports = {
       isDefault: { type: "boolean", description: "Set this account as the default account" }
     },
     async execute({ account, code, isDefault = false }) {
-      const { oauth2Client } = getGoogleAuthClient(account);
+      if (!account) {
+        return JSON.stringify({
+          status: "error",
+          error: "Please specify an email address to log in (e.g. auth_login({ account: 'user@gmail.com' }))"
+        }, null, 2);
+      }
+
+      const { oauth2Client, authUrl } = getGoogleAuthClient(account);
       const store = loadTokenStore();
-
-      const scopes = [
-        "https://www.googleapis.com/auth/gmail.modify",
-        "https://www.googleapis.com/auth/calendar",
-        "https://www.googleapis.com/auth/drive",
-        "https://www.googleapis.com/auth/documents",
-        "https://www.googleapis.com/auth/spreadsheets",
-        "https://www.googleapis.com/auth/tasks",
-        "https://www.googleapis.com/auth/contacts.readonly"
-      ];
-
-      const authUrl = oauth2Client.generateAuthUrl({
-        access_type: "offline",
-        scope: scopes,
-        prompt: "consent",
-        login_hint: account
-      });
 
       if (code) {
         try {
@@ -148,7 +161,7 @@ module.exports = {
       }));
       return JSON.stringify({
         status: "success",
-        defaultAccount: store.defaultAccount,
+        defaultAccount: store.defaultAccount || null,
         totalAccounts: accountList.length,
         accounts: accountList
       }, null, 2);
@@ -163,7 +176,7 @@ module.exports = {
     async execute({ account }) {
       const store = loadTokenStore();
       if (!store.accounts[account]) {
-        store.accounts[account] = { email: account, authenticatedAt: new Date().toISOString(), status: "active" };
+        return JSON.stringify({ status: "error", error: `Account ${account} has not been logged in yet. Run auth_login first.` }, null, 2);
       }
       store.defaultAccount = account;
       saveTokenStore(store);
