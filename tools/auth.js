@@ -11,6 +11,28 @@ const CONFIG_DIR = path.join(
 const TOKEN_PATH = path.join(CONFIG_DIR, "accounts.json");
 const CREDENTIALS_PATH = path.join(CONFIG_DIR, "credentials.json");
 
+function loadEnvFile(envPath) {
+  if (fs.existsSync(envPath)) {
+    try {
+      const content = fs.readFileSync(envPath, "utf8");
+      for (const line of content.split("\n")) {
+        const trimmed = line.trim();
+        if (trimmed && !trimmed.startsWith("#") && trimmed.includes("=")) {
+          const idx = trimmed.indexOf("=");
+          const key = trimmed.slice(0, idx).trim();
+          const val = trimmed.slice(idx + 1).trim().replace(/^["']|["']$/g, "");
+          if (key && val && !process.env[key]) {
+            process.env[key] = val;
+          }
+        }
+      }
+    } catch {}
+  }
+}
+
+loadEnvFile(path.join(__dirname, "..", ".env"));
+loadEnvFile(path.join(CONFIG_DIR, ".env"));
+
 function ensureTokenStore() {
   if (!fs.existsSync(CONFIG_DIR)) fs.mkdirSync(CONFIG_DIR, { recursive: true });
   if (!fs.existsSync(TOKEN_PATH)) {
@@ -37,12 +59,15 @@ function loadCredentials() {
   let clientSecret = process.env.GOOGLE_CLIENT_SECRET;
   let redirectUri = process.env.GOOGLE_REDIRECT_URI || "http://localhost:8080/oauth/callback";
 
-  if (!clientId && fs.existsSync(CREDENTIALS_PATH)) {
+  const localCredsPath = path.join(__dirname, "..", "credentials.json");
+  const targetCredsPath = fs.existsSync(localCredsPath) ? localCredsPath : CREDENTIALS_PATH;
+
+  if ((!clientId || !clientSecret) && fs.existsSync(targetCredsPath)) {
     try {
-      const creds = JSON.parse(fs.readFileSync(CREDENTIALS_PATH, "utf8"));
+      const creds = JSON.parse(fs.readFileSync(targetCredsPath, "utf8"));
       const installed = creds.installed || creds.web || creds;
-      clientId = installed.client_id;
-      clientSecret = installed.client_secret;
+      clientId = clientId || installed.client_id;
+      clientSecret = clientSecret || installed.client_secret;
       if (installed.redirect_uris && installed.redirect_uris[0]) {
         redirectUri = installed.redirect_uris[0];
       }
@@ -150,10 +175,9 @@ module.exports = {
           error: "Google Cloud OAuth Client Credentials required.",
           message: `To connect to Google's real servers, you need a Google Cloud OAuth Client ID.`,
           setupInstructions: [
-            "1. Go to Google Cloud Console: https://console.cloud.google.com/apis/credentials",
-            "2. Create a new OAuth 2.0 Client ID (Type: Desktop app or Web application).",
-            "3. Download the JSON credentials file and save it to: " + CREDENTIALS_PATH,
-            "   OR set environment variables: GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET."
+            "1. Paste your downloaded Google OAuth Client ID and Client Secret into environment variables or .env file.",
+            "2. Or place your downloaded JSON file into: " + CREDENTIALS_PATH,
+            "3. .gitignore is configured to guarantee no credentials will ever be pushed to git."
           ],
           credentialsPath: CREDENTIALS_PATH
         }, null, 2);
