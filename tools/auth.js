@@ -243,6 +243,33 @@ module.exports = {
     }
   },
 
+  auth_logout: {
+    description: "Log out and remove stored OAuth tokens for a specific Google account (or all accounts). Does NOT delete client credentials.json.",
+    args: {
+      account: { type: "string", description: "Email address to log out (optional, removes specified or default account)" },
+      all: { type: "boolean", description: "Set true to log out all stored accounts" }
+    },
+    async execute({ account, all = false }) {
+      const store = loadTokenStore();
+      if (all) {
+        store.accounts = {};
+        store.defaultAccount = "";
+        saveTokenStore(store);
+        return JSON.stringify({ status: "success", message: "Logged out all accounts. User tokens cleared." }, null, 2);
+      }
+      const target = account || store.defaultAccount;
+      if (target && store.accounts[target]) {
+        delete store.accounts[target];
+        if (store.defaultAccount === target) {
+          store.defaultAccount = Object.keys(store.accounts)[0] || "";
+        }
+        saveTokenStore(store);
+        return JSON.stringify({ status: "success", account: target, message: `Logged out ${target}.` }, null, 2);
+      }
+      return JSON.stringify({ status: "error", error: "No matching account found to log out." }, null, 2);
+    }
+  },
+
   auth_list_accounts: {
     description: "List all authenticated Google accounts and show the current default account.",
     args: {},
