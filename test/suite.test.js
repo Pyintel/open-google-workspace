@@ -2,6 +2,9 @@ const assert = require("assert");
 const fs = require("fs");
 const path = require("path");
 
+process.env.GOOGLE_CLIENT_ID = "mock_test_client_id.apps.googleusercontent.com";
+process.env.GOOGLE_CLIENT_SECRET = "mock_test_client_secret";
+
 const gwsTools = require("../tools/gws.js");
 const authTools = require("../tools/auth.js");
 

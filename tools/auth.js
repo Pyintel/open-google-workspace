@@ -9,6 +9,7 @@ const CONFIG_DIR = path.join(
   "open-google-workspace"
 );
 const TOKEN_PATH = path.join(CONFIG_DIR, "accounts.json");
+const CREDENTIALS_PATH = path.join(CONFIG_DIR, "credentials.json");
 
 function ensureTokenStore() {
   if (!fs.existsSync(CONFIG_DIR)) fs.mkdirSync(CONFIG_DIR, { recursive: true });
@@ -29,6 +30,26 @@ function loadTokenStore() {
 function saveTokenStore(store) {
   ensureTokenStore();
   fs.writeFileSync(TOKEN_PATH, JSON.stringify(store, null, 2));
+}
+
+function loadCredentials() {
+  let clientId = process.env.GOOGLE_CLIENT_ID;
+  let clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+  let redirectUri = process.env.GOOGLE_REDIRECT_URI || "http://localhost:8080/oauth/callback";
+
+  if (!clientId && fs.existsSync(CREDENTIALS_PATH)) {
+    try {
+      const creds = JSON.parse(fs.readFileSync(CREDENTIALS_PATH, "utf8"));
+      const installed = creds.installed || creds.web || creds;
+      clientId = installed.client_id;
+      clientSecret = installed.client_secret;
+      if (installed.redirect_uris && installed.redirect_uris[0]) {
+        redirectUri = installed.redirect_uris[0];
+      }
+    } catch {}
+  }
+
+  return { clientId, clientSecret, redirectUri };
 }
 
 function openBrowser(url) {
@@ -60,11 +81,15 @@ function getGoogleAuthClient(requestedAccount) {
   const store = loadTokenStore();
   const accInfo = activeAccount ? store.accounts[activeAccount] : null;
 
-  const clientId = process.env.GOOGLE_CLIENT_ID || "pyintel_arc_client_id";
-  const clientSecret = process.env.GOOGLE_CLIENT_SECRET || "pyintel_arc_client_secret";
-  const redirectUri = process.env.GOOGLE_REDIRECT_URI || "http://localhost:8080/oauth/callback";
+  const { clientId, clientSecret, redirectUri } = loadCredentials();
 
-  const oauth2Client = new google.auth.OAuth2(clientId, clientSecret, redirectUri);
+  const isCredentialsMissing = !clientId || !clientSecret;
+
+  const oauth2Client = new google.auth.OAuth2(
+    clientId || "missing_client_id",
+    clientSecret || "missing_client_secret",
+    redirectUri
+  );
 
   if (accInfo && accInfo.tokens) {
     oauth2Client.setCredentials(accInfo.tokens);
@@ -80,7 +105,7 @@ function getGoogleAuthClient(requestedAccount) {
     "https://www.googleapis.com/auth/contacts.readonly"
   ];
 
-  const authUrl = oauth2Client.generateAuthUrl({
+  const authUrl = isCredentialsMissing ? "" : oauth2Client.generateAuthUrl({
     access_type: "offline",
     scope: scopes,
     prompt: "consent",
@@ -90,6 +115,7 @@ function getGoogleAuthClient(requestedAccount) {
   return {
     oauth2Client,
     activeAccount,
+    isCredentialsMissing,
     isConfigured: !!(accInfo && accInfo.tokens),
     requiresLogin: !accInfo || !accInfo.tokens,
     authUrl
@@ -99,6 +125,7 @@ function getGoogleAuthClient(requestedAccount) {
 module.exports = {
   resolveAccount,
   getGoogleAuthClient,
+  loadCredentials,
 
   auth_login: {
     description: "Initiate or complete Google OAuth login for a user's email address. Calling this with account (and without code) AUTOMATICALLY pops open the Google OAuth consent web page in the user's default browser and asks them for the auth code. Calling this with code completes login.",
@@ -115,7 +142,23 @@ module.exports = {
         }, null, 2);
       }
 
-      const { oauth2Client, authUrl } = getGoogleAuthClient(account);
+      const { oauth2Client, authUrl, isCredentialsMissing } = getGoogleAuthClient(account);
+
+      if (isCredentialsMissing) {
+        return JSON.stringify({
+          status: "credentials_required",
+          error: "Google Cloud OAuth Client Credentials required.",
+          message: `To connect to Google's real servers, you need a Google Cloud OAuth Client ID.`,
+          setupInstructions: [
+            "1. Go to Google Cloud Console: https://console.cloud.google.com/apis/credentials",
+            "2. Create a new OAuth 2.0 Client ID (Type: Desktop app or Web application).",
+            "3. Download the JSON credentials file and save it to: " + CREDENTIALS_PATH,
+            "   OR set environment variables: GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET."
+          ],
+          credentialsPath: CREDENTIALS_PATH
+        }, null, 2);
+      }
+
       const store = loadTokenStore();
 
       if (code) {
