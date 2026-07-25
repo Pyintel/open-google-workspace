@@ -57,7 +57,7 @@ function saveTokenStore(store) {
 function loadCredentials() {
   let clientId = process.env.GOOGLE_CLIENT_ID;
   let clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-  let redirectUri = process.env.GOOGLE_REDIRECT_URI || "http://localhost:8080/oauth/callback";
+  let redirectUri = process.env.GOOGLE_REDIRECT_URI || "http://localhost";
 
   const localCredsPath = path.join(__dirname, "..", "credentials.json");
   const targetCredsPath = fs.existsSync(localCredsPath) ? localCredsPath : CREDENTIALS_PATH;
@@ -86,6 +86,19 @@ function openBrowser(url) {
       : `xdg-open "${url}"`;
     exec(startCmd);
   } catch {}
+}
+
+function extractCode(input) {
+  if (!input) return "";
+  const trimmed = input.trim();
+  if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+    try {
+      const parsedUrl = new URL(trimmed);
+      const code = parsedUrl.searchParams.get("code");
+      if (code) return code;
+    } catch {}
+  }
+  return trimmed;
 }
 
 function resolveAccount(requestedAccount) {
@@ -153,10 +166,10 @@ module.exports = {
   loadCredentials,
 
   auth_login: {
-    description: "Initiate or complete Google OAuth login for a user's email address. Calling this with account (and without code) AUTOMATICALLY pops open the Google OAuth consent web page in the user's default browser and asks them for the auth code. Calling this with code completes login.",
+    description: "Initiate or complete Google OAuth login for a user's email address. Calling this with account (and without code) AUTOMATICALLY pops open the Google OAuth consent web page in the user's default browser and asks them for the auth code. Passing the full redirect URL or auth code completes login.",
     args: {
       account: { type: "string", description: "Email address or account alias to register (e.g. user@gmail.com)" },
-      code: { type: "string", description: "Authorization code returned from Google OAuth browser login" },
+      code: { type: "string", description: "Authorization code OR full redirect URL returned from Google OAuth browser login" },
       isDefault: { type: "boolean", description: "Set this account as the default account" }
     },
     async execute({ account, code, isDefault = false }) {
@@ -184,10 +197,11 @@ module.exports = {
       }
 
       const store = loadTokenStore();
+      const extractedCode = extractCode(code);
 
-      if (code) {
+      if (extractedCode) {
         try {
-          const { tokens } = await oauth2Client.getToken(code);
+          const { tokens } = await oauth2Client.getToken(extractedCode);
           store.accounts[account] = {
             email: account,
             authenticatedAt: new Date().toISOString(),
@@ -224,7 +238,7 @@ module.exports = {
         account,
         authUrl,
         browserOpened: true,
-        instructions: `Opened Google OAuth Login in your default browser! Once authorized, copy the code from your browser and pass it back to auth_login({ account: "${account}", code: "YOUR_CODE" })`
+        instructions: `Opened Google OAuth Login in your default browser! Once authorized, copy the full redirect URL or code from your browser and pass it back to auth_login({ account: "${account}", code: "YOUR_URL_OR_CODE" })`
       }, null, 2);
     }
   },
