@@ -19,7 +19,7 @@
     "drive"
   ],
   "scripts": {
-    "build": "bun build ./tools/gws.js ./tools/auth.js --target=node --outdir=dist --minify",
+    "build": "bun build ./tools/gws.js ./tools/auth.js --target=node --outdir=dist --minify --external googleapis",
     "test": "node test/suite.test.js"
   },
   "dependencies": {
