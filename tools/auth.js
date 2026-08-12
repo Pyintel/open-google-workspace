@@ -1,7 +1,10 @@
-const fs = require("fs");
-const path = require("path");
-const { exec } = require("child_process");
-const { google } = require("googleapis");
+import fs from "fs";
+import path from "path";
+import { exec } from "child_process";
+import { google } from "googleapis";
+import { fileURLToPath } from 'url';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const CONFIG_DIR = path.join(
   process.env.HOME || process.env.USERPROFILE || "",
@@ -54,7 +57,7 @@ function saveTokenStore(store) {
   fs.writeFileSync(TOKEN_PATH, JSON.stringify(store, null, 2));
 }
 
-function loadCredentials() {
+export function loadCredentials() {
   let clientId = process.env.GOOGLE_CLIENT_ID;
   let clientSecret = process.env.GOOGLE_CLIENT_SECRET;
   let redirectUri = process.env.GOOGLE_REDIRECT_URI;
@@ -103,7 +106,7 @@ function extractCode(input) {
   return trimmed;
 }
 
-function resolveAccount(requestedAccount) {
+export function resolveAccount(requestedAccount) {
   const store = loadTokenStore();
   if (requestedAccount && store.accounts[requestedAccount]) {
     return requestedAccount;
@@ -116,7 +119,7 @@ function resolveAccount(requestedAccount) {
   return requestedAccount || null;
 }
 
-function getGoogleAuthClient(requestedAccount, customRedirectUri) {
+export function getGoogleAuthClient(requestedAccount, customRedirectUri) {
   const activeAccount = resolveAccount(requestedAccount);
   const store = loadTokenStore();
   const accInfo = activeAccount ? store.accounts[activeAccount] : null;
@@ -164,7 +167,7 @@ function getGoogleAuthClient(requestedAccount, customRedirectUri) {
   };
 }
 
-module.exports = {
+const __exports = {
   resolveAccount,
   getGoogleAuthClient,
   loadCredentials,
@@ -313,3 +316,8 @@ module.exports = {
     }
   }
 };
+
+export const auth_login = __exports.auth_login;
+export const auth_logout = __exports.auth_logout;
+export const auth_list_accounts = __exports.auth_list_accounts;
+export const auth_set_default = __exports.auth_set_default;

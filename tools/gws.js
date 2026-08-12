@@ -1,11 +1,10 @@
-const path = require("path");
-const fs = require("fs");
-const { google } = require("googleapis");
-const { resolveAccount, getGoogleAuthClient } = require("./auth.js");
-
-if (typeof module !== "undefined" && module.paths) {
-  module.paths.push(path.join(__dirname, "..", "node_modules"));
-}
+import path from "path";
+import fs from "fs";
+import { google } from "googleapis";
+import { resolveAccount, getGoogleAuthClient } from "./auth.js";
+import { fileURLToPath } from 'url';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 function checkAuth(account) {
   const auth = getGoogleAuthClient(account);
@@ -25,7 +24,7 @@ function checkAuth(account) {
   return { authenticated: true, ...auth };
 }
 
-module.exports = {
+const __exports = {
   // ==========================================
   // 1. Gmail Tools (Send, Draft, Search, Thread, Reply)
   // ==========================================
@@ -871,3 +870,37 @@ module.exports = {
     }
   }
 };
+
+export const gmail_send = __exports.gmail_send;
+export const gmail_draft = __exports.gmail_draft;
+export const gmail_search_threads = __exports.gmail_search_threads;
+export const gmail_get_thread = __exports.gmail_get_thread;
+export const gmail_reply = __exports.gmail_reply;
+export const contacts_search = __exports.contacts_search;
+export const contacts_list_frequent = __exports.contacts_list_frequent;
+export const tasks_create = __exports.tasks_create;
+export const tasks_list = __exports.tasks_list;
+export const tasks_complete = __exports.tasks_complete;
+export const calendar_create = __exports.calendar_create;
+export const calendar_list = __exports.calendar_list;
+export const calendar_freebusy = __exports.calendar_freebusy;
+export const calendar_update = __exports.calendar_update;
+export const calendar_delete = __exports.calendar_delete;
+export const drive_upload = __exports.drive_upload;
+export const drive_list = __exports.drive_list;
+export const drive_activity_list = __exports.drive_activity_list;
+export const drive_labels_get = __exports.drive_labels_get;
+export const docs_create = __exports.docs_create;
+export const docs_get = __exports.docs_get;
+export const docs_append_text = __exports.docs_append_text;
+export const sheets_append = __exports.sheets_append;
+export const sheets_read = __exports.sheets_read;
+export const sheets_batch_update = __exports.sheets_batch_update;
+export const chat_send_message = __exports.chat_send_message;
+export const chat_list_spaces = __exports.chat_list_spaces;
+export const keep_create_note = __exports.keep_create_note;
+export const forms_get_responses = __exports.forms_get_responses;
+export const slides_create_presentation = __exports.slides_create_presentation;
+export const meet_create_space = __exports.meet_create_space;
+export const apps_script_run = __exports.apps_script_run;
+export const cloud_search_query = __exports.cloud_search_query;
