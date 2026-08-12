@@ -1,6 +1,6 @@
 {
   "name": "@pyintel/arc-module-google-workspace",
-  "version": "1.0.7",
+  "version": "1.0.9",
   "type": "module",
   "description": "Enterprise Google Workspace Automation & Multi-User OAuth Module for Pyintel Arc",
   "author": "Pyintel",
@@ -24,7 +24,7 @@
     "drive"
   ],
   "scripts": {
-    "build": "bun build ./tools/gws.js ./tools/auth.js --target=node --outdir=dist --minify --external googleapis",
+    "build": "bun build ./tools/gws.js ./tools/auth.js --target=node --outdir=dist --minify",
     "test": "node test/suite.test.js"
   },
   "dependencies": {
