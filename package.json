@@ -1,6 +1,7 @@
 {
   "name": "@pyintel/arc-module-google-workspace",
-  "version": "1.0.6",
+  "version": "1.0.7",
+  "type": "module",
   "description": "Enterprise Google Workspace Automation & Multi-User OAuth Module for Pyintel Arc",
   "author": "Pyintel",
   "license": "MIT",
