@@ -1,12 +1,12 @@
-const assert = require("assert");
-const fs = require("fs");
-const path = require("path");
+import assert from "assert";
+import fs from "fs";
+import path from "path";
 
 process.env.GOOGLE_CLIENT_ID = "mock_test_client_id.apps.googleusercontent.com";
 process.env.GOOGLE_CLIENT_SECRET = "mock_test_client_secret";
 
-const gwsTools = require("../tools/gws.js");
-const authTools = require("../tools/auth.js");
+import * as gwsTools from "../tools/gws.js";
+import * as authTools from "../tools/auth.js";
 
 async function runGoogleWorkspaceTestSuite() {
   console.log("🔥 Running Enterprise 38-Tool Suite & Multi-User OAuth Test for open-google-workspace...\n");
